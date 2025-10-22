@@ -1,0 +1,14 @@
+{
+    "name": "supp",
+    "version": "0.0.1",
+    "description": "Support tools",
+    "authors": [],
+    "dependencies": {
+        "log": "^0.0.1"
+    },
+    "frameworks": "*",
+    "platforms": "*",
+    "build": {
+        "includeDir": "src"
+    }
+}

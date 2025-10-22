@@ -1,0 +1,493 @@
+#pragma once
+
+#include <array>
+#include <type_traits>
+#include <utility>
+
+#include <stddef.h>
+
+namespace tl {
+
+template <typename T>
+struct Type {
+    using type = T;
+
+    template <typename U>
+    constexpr bool operator==(const Type<U>&) const noexcept {
+        return std::is_same_v<U, T>;
+    }
+};
+
+template <typename T>
+static constexpr Type<T> type{};  // NOLINT
+
+template <typename... Ts>
+struct List {
+    static constexpr size_t npos = size_t(-1);  // NOLINT
+
+    template <typename... Us>
+    constexpr bool operator==(const List<Us...>&) const noexcept {
+        return false;
+    }
+
+    constexpr bool operator==(const List&) const noexcept {
+        return true;
+    }
+};
+
+template <typename... Ts>
+static constexpr List<Ts...> list{};  // NOLINT
+
+namespace detail {
+
+template <typename U>
+struct ToList;
+
+template <template <typename...> class T, typename... Xs>
+struct ToList<T<Xs...>> {
+    using type = List<Xs...>;
+};
+
+template <typename L>
+struct IsList : std::false_type {};
+
+template <typename... Ts>
+struct IsList<List<Ts...>> : std::true_type {};
+
+template <typename L, template <typename> typename C>
+struct IsListOf : std::false_type {};
+
+template <template <typename> typename C, typename... Ts>
+struct IsListOf<List<Ts...>, C> : std::bool_constant<(C<Ts>::value && ...)> {};
+
+template <typename F, typename L>
+struct Callable : std::false_type {};
+
+template <typename F, typename... Ts>
+struct Callable<F, List<Ts...>> : std::bool_constant<std::invocable<F, Ts...>> {};
+
+template <typename R, typename F, typename L>
+struct CallableR : std::false_type {};
+
+template <typename R, typename F, typename... Ts>
+struct CallableR<R, F, List<Ts...>> : std::bool_constant<std::is_invocable_r_v<R, F, Ts...>> {};
+
+template <typename F, typename L>
+struct CallableN : std::false_type {};
+
+template <typename F, typename... Lists>
+struct CallableN<F, List<Lists...>> : std::bool_constant<(Callable<F, Lists>::value && ...)> {};
+
+template <typename R, typename F, typename L>
+struct CallableNR : std::false_type {};
+
+template <typename R, typename F, typename... Lists>
+struct CallableNR<R, F, List<Lists...>>
+    : std::bool_constant<(CallableR<R, F, Lists>::value && ...)> {};
+
+}  // namespace detail
+
+template <typename L>
+concept IsList = detail::IsList<L>::value;
+
+template <typename L, template <typename> typename C>
+concept IsListOf = detail::IsListOf<L, C>::value;
+
+template <typename F, typename L>
+concept Callable = detail::Callable<F, L>::value;
+
+template <typename R, typename F, typename L>
+concept CallableR = detail::CallableR<R, F, L>::value;
+
+template <typename F, typename L>
+concept CallableN = detail::CallableN<F, L>::value;
+
+template <typename R, typename F, typename L>
+concept CallableNR = detail::CallableNR<R, F, L>::value;
+
+template <typename U>
+using ToList = typename detail::ToList<U>::type;
+
+template <auto Start, auto End, auto Inc, class F>
+constexpr void forEach(const F& f) {
+    if constexpr (Start < End) {
+        f(std::integral_constant<decltype(Start), Start>());
+        forEach<Start + Inc, End, Inc>(f);
+    }
+}
+
+template <class F, class... Args>
+constexpr void forEach(F f, Args&&... args) {
+    (f(std::forward<Args>(args)), ...);
+}
+
+template <typename F, typename... Ts>
+constexpr void forEach(F f, List<Ts...>) {
+    forEach(std::move(f), Type<Ts>{}...);
+}
+
+template <typename F, typename... Ts>
+constexpr void forEachIndexed(F f, List<Ts...>) {
+    size_t i = 0;
+    (f(i++, Type<Ts>{}), ...);
+}
+
+template <typename F, typename... Ts>
+constexpr bool forEachShortCircuit(F f, List<Ts...>) {  // true = stop
+    return (f(Type<Ts>{}) || ...);
+}
+
+template <typename F, typename... Ts>
+constexpr bool forEachShortCircuitIndexed(F f, List<Ts...>) {  // true = stop
+    return [&]<size_t... Is>(std::index_sequence<Is...>) {
+        return (f.template operator()<Is>() || ...);
+    }(std::make_index_sequence<sizeof...(Ts)>());
+}
+
+template <typename F, typename... Ts>
+constexpr decltype(auto) apply(F&& f, List<Ts...>) {
+    return std::forward<F>(f)(type<Ts>...);
+}
+
+template <typename... Ts>
+constexpr size_t size(List<Ts...>) noexcept {
+    return sizeof...(Ts);
+}
+
+template <typename L>
+static constexpr size_t Size = size(L{});
+
+template <typename... Ts>
+constexpr bool empty(List<Ts...> list) noexcept {
+    return size(list) == 0;
+}
+
+template <typename L>
+static constexpr bool Empty = empty(L{});
+
+template <typename T, typename... Ts>
+constexpr bool contains(List<Ts...>, Type<T> = {}) noexcept {
+    return (std::is_same_v<T, Ts> || ...);
+}
+
+template <typename L, typename T>
+concept Contains = contains(L{}, Type<T>{});
+
+template <typename T, typename L>
+constexpr size_t find(L list, Type<T> = {}) noexcept {
+    size_t result = L::npos;
+
+    forEachIndexed(
+        [&result]<typename U>(size_t i, Type<U>) {
+            if (std::is_same_v<T, U>) {
+                result = i;
+            }
+        },
+        list);
+
+    return result;
+}
+
+template <typename T, typename L>
+static constexpr size_t Find = find(L{}, Type<T>{});
+
+template <typename T, typename... Ts>
+constexpr auto head(List<T, Ts...>) noexcept {
+    return Type<T>{};
+}
+
+template <typename L>
+using Head = decltype(head(L{}));
+
+template <typename T, typename... Ts>
+constexpr auto tail(List<T, Ts...>) noexcept {
+    return List<Ts...>{};
+}
+
+template <typename L>
+using Tail = decltype(tail(L{}));
+
+template <size_t Index, typename... Ts>
+requires(Index < sizeof...(Ts))
+constexpr auto at(List<Ts...> list) noexcept {
+    if constexpr (Index == 0) {
+        return head(list);
+    } else {
+        return at<Index - 1>(tail(list));
+    }
+}
+
+template <size_t Index, typename L>
+using At = typename decltype(at<Index>(L{}))::type;
+
+namespace detail {
+
+template <typename... As, typename... Bs>
+constexpr List<As..., Bs...> concat2(List<As...>, List<Bs...>) noexcept {
+    return {};
+}
+
+}  // namespace detail
+
+inline constexpr List<> concat() noexcept {
+    return {};
+}
+
+template <typename... Ts>
+constexpr List<Ts...> concat(List<Ts...>) noexcept {
+    return {};
+}
+
+template <typename... Ts, typename... Lists>
+constexpr auto concat(List<Ts...> head, Lists... tail) noexcept {
+    return detail::concat2(head, concat(tail...));
+}
+
+template <typename... Lists>
+using Concat = decltype(concat(Lists{}...));
+
+template <typename T, typename... Ts>
+constexpr List<Ts..., T> pushBack(List<Ts...>, Type<T> = {}) noexcept {
+    return {};
+}
+
+template <typename L, typename T>
+using PushBack = decltype(pushBack(L{}, Type<T>{}));
+
+template <typename T, typename... Ts>
+constexpr List<T, Ts...> pushFront(List<Ts...>, Type<T> = {}) noexcept {
+    return {};
+}
+
+template <typename L, typename T>
+using PushFront = decltype(pushFront(L{}, Type<T>{}));
+
+template <typename... Lists>
+constexpr auto flatten(List<Lists...>) noexcept {
+    return concat(Lists{}...);
+}
+
+template <typename L>
+using Flatten = decltype(flatten(L{}));
+
+template <size_t Count, typename... Ts>
+constexpr auto take(List<Ts...> list) {
+    if constexpr (Count == 0) {
+        return List<>{};
+    } else {
+        auto first = head(list);
+        auto rest = take<Count - 1>(tail(list));
+        return pushFront(rest, first);
+    }
+}
+
+template <size_t Count, typename L>
+using Take = decltype(take<Count>(L{}));
+
+template <typename Predicate, typename... Ts>
+constexpr auto filter(List<Ts...> list) {
+    if constexpr (empty(list)) {
+        return list;
+    } else {
+        auto first = head(list);
+        auto rest = filter<Predicate>(tail(list));
+        using T = typename decltype(first)::type;
+
+        if constexpr (Predicate::template test<T>()) {
+            return pushFront(rest, first);
+        } else {
+            return rest;
+        }
+    }
+}
+
+template <typename Predicate, typename L>
+using Filter = decltype(filter<Predicate>(L{}));
+
+template <typename Mapper, typename... Ts>
+constexpr auto map(List<Ts...>) {
+    return List<typename Mapper::template Map<Ts>...>{};
+}
+
+template <typename Mapper, typename L>
+using Map = decltype(map<Mapper>(L{}));
+
+namespace detail {
+
+template <typename... Ts>
+constexpr List<List<Ts>...> listify(List<Ts...>) {
+    return {};
+}
+
+template <typename... As, typename... Bs>
+constexpr auto zipcat2(List<As...>, List<Bs...>) noexcept {
+    return List<decltype(concat(As{}, Bs{}))...>{};
+}
+
+}  // namespace detail
+
+template <typename... Ts>
+constexpr auto zip(List<Ts...> list) noexcept {
+    return detail::listify(list);
+}
+
+template <typename... Ts, typename... Lists>
+constexpr auto zip(List<Ts...> head, Lists... tail) noexcept {
+    auto first = detail::listify(head);
+    auto rest = zip(tail...);
+    return detail::zipcat2(first, rest);
+}
+
+template <typename... Lists>
+using Zip = decltype(zip(Lists{}...));
+
+namespace detail {
+
+template <typename T>
+struct PushFrontMapper {
+    template <typename L>
+    using Map = decltype(pushFront(L{}, T{}));
+};
+
+}  // namespace detail
+
+inline constexpr auto prod() noexcept {
+    return List<List<>>{};
+}
+
+template <typename... Ts, typename... Lists>
+constexpr auto prod(List<Ts...> head, Lists... tail) noexcept {
+    if constexpr (empty(head)) {
+        return head;
+    } else {
+        auto rest = prod(tail...);
+        return concat(map<detail::PushFrontMapper<Type<Ts>>>(rest)...);
+    }
+}
+
+template <typename... Lists>
+using Prod = decltype(prod(Lists{}...));
+
+template <typename... Ts>
+constexpr auto unique(List<Ts...> list) noexcept {
+    if constexpr (empty(list)) {
+        return list;
+    } else {
+        auto first = head(list);
+        auto rest = unique(tail(list));
+
+        if constexpr (contains(rest, first)) {
+            return rest;
+        } else {
+            return pushFront(rest, first);
+        }
+    }
+}
+
+template <typename L>
+using Unique = decltype(unique(L{}));
+
+template <typename L>
+constexpr auto isASet(L list) noexcept {
+    return size(list) == size(unique(list));
+}
+
+template <typename L>
+concept Set = isASet(L{});
+
+template <typename... Ts, typename... Lists>
+constexpr auto intersect(List<Ts...> list, Lists... lists) noexcept {
+    if constexpr (empty(list)) {
+        return list;
+    } else {
+        auto first = head(list);
+        auto rest = intersect(tail(list), lists...);
+
+        if constexpr (sizeof...(lists) == 0 || (contains(lists, first) && ...)) {
+            return pushFront(rest, first);
+        } else {
+            return rest;
+        }
+    }
+}
+
+template <typename... Lists>
+constexpr auto unite(Lists... lists) noexcept {
+    return unique(concat(lists...));
+}
+
+template <typename... Lists>
+using Unite = decltype(unite(Lists{}...));
+
+template <typename From, typename What>
+constexpr auto subtract(From from, What what) noexcept {
+    if constexpr (empty(from) || empty(what)) {
+        return from;
+    } else {
+        auto first = head(from);
+        auto rest = subtract(tail(from), what);
+
+        if constexpr (contains(what, first)) {
+            return rest;
+        } else {
+            return pushFront(rest, first);
+        }
+    }
+}
+
+template <typename From, typename What>
+using Subtract = decltype(subtract(From{}, What{}));
+
+template <typename... As, typename Super>
+constexpr auto isSubset(List<As...>, Super sup) noexcept {
+    return (contains(sup, Type<As>{}) && ...);
+}
+
+template <typename L, typename Superset>
+concept SubsetOf = Set<L> && isSubset(L{}, Superset{});
+
+template <typename L, typename Subset>
+concept SupersetOf = Set<L> && isSubset(Subset{}, L{});
+
+template <typename L>
+constexpr auto powerset(L list) noexcept {
+    if constexpr (empty(list)) {
+        return List<List<>>{};
+    } else {
+        auto first = head(list);
+        auto rest = powerset(tail(list));
+
+        using T = decltype(first);
+        using Mapper = detail::PushFrontMapper<T>;
+
+        return concat(map<Mapper>(rest), rest);
+    }
+}
+
+template <typename List>
+using Powerset = decltype(powerset(List{}));
+
+// template <Set From, SupersetOf<From> To>
+template <Set From, Set To>
+constexpr std::array<size_t, Size<From>> injection(From from, To to) noexcept {
+    std::array<size_t, Size<From>> inj;
+    forEachIndexed([&]<typename U>(size_t i, Type<U>) { inj[i] = find<U>(to); }, from);
+    return inj;
+}
+
+namespace detail {
+
+template <typename L, template <typename...> class Template>
+struct ApplyToTemplate;
+
+template <typename... Ts, template <typename...> class Template>
+struct ApplyToTemplate<List<Ts...>, Template> {
+    using type = Template<Ts...>;
+};
+
+}  // namespace detail
+
+template <typename L, template <typename...> class Template>
+using ApplyToTemplate = typename detail::ApplyToTemplate<L, Template>::type;
+
+}  // namespace tl
