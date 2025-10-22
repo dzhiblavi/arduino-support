@@ -1,37 +1,42 @@
 #pragma once
 
+#include <cstddef>
+#include <utility>
+
 namespace supp {
 
-template <typename I, typename T, typename Self>
+// POD types only
+template <typename Self>
 class Heap {
  public:
     Heap() = default;
 
-    void push(T arg) {
-        self().pushBack(arg);
-        siftUp(self().back());
+    template <typename T>
+    void push(T&& arg) {
+        self().pushBack(std::forward<T>(arg));
+        siftUp(self().size() - 1);
     }
 
-    T pop() {
-        return remove(self().root());
+    auto pop() {
+        return remove(0);
     }
 
-    void erase(I idx) {
+    auto erase(size_t idx) {
         return remove(idx);
     }
 
-    void fix(I idx) {
+    void fix(size_t idx) {
         if (!siftDown(idx)) {
             siftUp(idx);
         }
     }
 
-    auto front() {
-        return self().at(self().root());
+    decltype(auto) front() {
+        return self().at(0);
     }
 
-    auto front() const {
-        return self().at(self().root());
+    decltype(auto) front() const {
+        return self().at(0);
     }
 
     void clear() {
@@ -40,11 +45,15 @@ class Heap {
         }
     }
 
+    bool empty() const {
+        return self().size() == 0;
+    }
+
  private:
-    T remove(I idx) {
-        T res = self().at(idx);
+    auto remove(size_t idx) {
+        auto res = self().at(idx);
         auto&& s = self();
-        I back = s.back();
+        size_t back = s.size() - 1;
 
         if (idx == back) {
             s.popBack();
@@ -54,14 +63,14 @@ class Heap {
             fix(idx);
         }
 
-        return res;
+        return std::move(res);
     }
 
-    void siftUp(I idx) {
+    void siftUp(size_t idx) {
         auto&& s = self();
 
-        while (!s.isRoot(idx)) {
-            auto p = s.parent(idx);
+        while (idx > 0) {
+            auto p = (idx - 1) / 2;
 
             if (!s.compare(idx, p)) {  // idx >= p
                 return;
@@ -72,17 +81,16 @@ class Heap {
         }
     }
 
-    bool siftDown(I idx) {
+    bool siftDown(size_t idx) {
         bool sift = false;
-        auto&& s = self();
+        Self& s = self();
 
-        while (s.hasLeft(idx)) {
-            auto v = s.left(idx);  // the lesser child
+        while (2 * idx + 1 < s.size()) {
+            size_t v = 2 * idx + 1;
+            size_t r = v + 1;
 
-            if (s.hasRight(idx)) {
-                if (auto r = s.right(idx); s.compare(r, v)) {  // right < left = v
-                    v = r;
-                }
+            if (r < s.size() && s.compare(r, v)) {
+                v = r;
             }
 
             if (!s.compare(v, idx)) {  // lesser child >= parent

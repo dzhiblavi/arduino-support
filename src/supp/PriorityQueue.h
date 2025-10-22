@@ -1,9 +1,8 @@
 #pragma once
 
-#include "verify.h"
+#include "Heap.h"
 
 #include <array>
-#include <utility>
 
 #include <stddef.h>
 
@@ -11,76 +10,56 @@ namespace supp {
 
 // POD types only
 template <typename T, size_t Cap, typename Comp>
-class PriorityQueue {
+class PriorityQueue : public Heap<PriorityQueue<T, Cap, Comp>> {
  public:
     PriorityQueue() = default;
 
-    void push(T val) {
-        DASSERT(size_ < Cap);
-        ++size_;
-        buf_[size_ - 1] = val;
-        siftUp(size_ - 1);
+    void clear() {
+        size_ = 0;
     }
 
-    const T& front() const {
-        DASSERT(!empty());
-        return buf_[0];
-    }
-
-    T pop() {
-        DASSERT(!empty());
-        T out = buf_[0];
-        buf_[0] = buf_[size_ - 1];
-        --size_;
-        siftDown(0);
-        return out;
-    }
-
-    void fixFront() {
-        siftDown(0);
+    constexpr size_t capacity() const {
+        return Cap;
     }
 
     size_t size() const {
         return size_;
     }
 
-    bool empty() const {
-        return size() == 0;
-    }
-
-    void clear() {
-        size_ = 0;
-    }
-
  private:
-    void siftUp(size_t i) {
-        while (i > 0 && comp_(buf_[i], buf_[(i - 1) / 2])) {
-            std::swap(buf_[i], buf_[(i - 1) / 2]);
-            i = (i - 1) / 2;
-        }
+    const T& at(size_t i) const {
+        return buf_[i];
     }
 
-    void siftDown(size_t i) {
-        while (2 * i + 1 < size_) {
-            auto left = 2 * i + 1;
-            auto right = 2 * i + 2;
-            auto j = left;
-            if (right < size_ && comp_(buf_[right], buf_[left])) {
-                j = right;
-            }
+    T& at(size_t i) {
+        return buf_[i];
+    }
 
-            if (!comp_(buf_[j], buf_[i])) {
-                return;
-            }
+    bool compare(size_t i, size_t j) {
+        return comp_(buf_[i], buf_[j]);
+    }
 
-            std::swap(buf_[i], buf_[j]);
-            i = j;
-        }
+    void swap(size_t i, size_t j) {
+        std::swap(buf_[i], buf_[j]);
+    }
+
+    void move(size_t from, size_t to) {
+        buf_[to] = buf_[from];
+    }
+
+    void pushBack(T val) {
+        buf_[size_++] = val;
+    }
+
+    void popBack() {
+        --size_;
     }
 
     size_t size_ = 0;
     std::array<T, Cap> buf_;
     [[no_unique_address]] Comp comp_{};
+
+    friend class Heap<PriorityQueue<T, Cap, Comp>>;
 };
 
 }  // namespace supp
