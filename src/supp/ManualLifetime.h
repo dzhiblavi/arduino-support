@@ -2,7 +2,6 @@
 
 #include <supp/verify.h>
 
-#include <new>
 #include <utility>
 
 #include <stdint.h>
