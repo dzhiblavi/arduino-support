@@ -83,8 +83,12 @@ class RandomAccessPriorityQueue : public Heap<RandomAccessPriorityQueue<T, Cap, 
         buf_[j]->heap_index_ = j;
     }
 
-    void move(size_t from, size_t to) {
-        buf_[to] = buf_[from];
+    void replaceWithBack(size_t to) {
+        --size_;
+        DASSERT(to != size_);
+
+        buf_[to]->heap_index_ = UINT_MAX;
+        buf_[to] = buf_[size_];
         buf_[to]->heap_index_ = to;
     }
 

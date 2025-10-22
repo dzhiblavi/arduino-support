@@ -51,19 +51,18 @@ class Heap {
 
  private:
     auto remove(size_t idx) {
-        auto res = self().at(idx);
         auto&& s = self();
+        auto res = s.at(idx);
         size_t back = s.size() - 1;
 
         if (idx == back) {
             s.popBack();
         } else {
-            s.move(back, idx);
-            s.popBack();
+            s.replaceWithBack(idx);
             fix(idx);
         }
 
-        return std::move(res);
+        return res;
     }
 
     void siftUp(size_t idx) {

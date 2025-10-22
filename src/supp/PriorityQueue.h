@@ -43,8 +43,9 @@ class PriorityQueue : public Heap<PriorityQueue<T, Cap, Comp>> {
         std::swap(buf_[i], buf_[j]);
     }
 
-    void move(size_t from, size_t to) {
-        buf_[to] = buf_[from];
+    void replaceWithBack(size_t to) {
+        --size_;
+        buf_[to] = buf_[size_];
     }
 
     void pushBack(T val) {
