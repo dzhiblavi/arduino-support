@@ -1,10 +1,10 @@
 {
     "name": "support",
-    "version": "0.0.2",
+    "version": "0.0.4",
     "description": "Support tools",
     "authors": [],
     "dependencies": {
-        "logging": "^0.0.2"
+        "dzhiblavi/logging": "^0.0.4"
     },
     "frameworks": "*",
     "platforms": "*",
