@@ -69,9 +69,11 @@ class IntrusiveForwardList {
         return static_cast<T*>(front);
     }
 
-    void pushFront(T* val) {
+    void pushFront(T* ptr) {
+        auto* val = static_cast<IntrusiveForwardListNode<Tag>*>(ptr);
         DASSERT(val != tail_ && val != head_);
-        static_cast<IntrusiveForwardListNode<Tag>*>(val)->next_ = head_;
+
+        val->next_ = head_;
 
         if (head_ == nullptr) {
             DASSERT(tail_ == nullptr);

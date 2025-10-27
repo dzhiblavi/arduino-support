@@ -1,6 +1,5 @@
 #include <supp/RandomAccessPriorityQueue.h>
 
-#include <log.h>
 #include <utest/utest.h>
 
 struct T : supp::RandomAccessPriorityQueueNode {

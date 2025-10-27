@@ -4,7 +4,7 @@
     "description": "Support tools",
     "authors": [],
     "dependencies": {
-        "log": "^0.0.1"
+        "logging": "^0.0.1"
     },
     "frameworks": "*",
     "platforms": "*",

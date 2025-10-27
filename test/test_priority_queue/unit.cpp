@@ -1,6 +1,6 @@
 #include <supp/PriorityQueue.h>
 
-#include <log.h>
+#include <logging/log.h>
 #include <utest/utest.h>
 
 using Comp = decltype([](int x, int y) { return x < y; });
