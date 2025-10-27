@@ -1,11 +1,10 @@
 #include <supp/PriorityQueue.h>
 
-#include <logging/log.h>
-#include <utest/utest.h>
+#include <unity.h>
 
 using Comp = decltype([](int x, int y) { return x < y; });
 
-TEST(test_empty) {
+void test_empty() {
     supp::PriorityQueue<int, 3, Comp> p;
 
     TEST_ASSERT_EQUAL(0, p.size());
@@ -13,24 +12,28 @@ TEST(test_empty) {
     TEST_ASSERT_TRUE(p.empty());
 }
 
-TEST(test_one_element) {
+void test_one_element_front() {
     supp::PriorityQueue<int, 1, Comp> p;
 
     p.push(10);
     TEST_ASSERT_EQUAL(1, p.size());
     TEST_ASSERT_FALSE(p.empty());
 
-    SECTION("front") {
-        TEST_ASSERT_EQUAL(10, p.front());
-    }
-
-    SECTION("pop") {
-        TEST_ASSERT_EQUAL(10, p.pop());
-        TEST_ASSERT_TRUE(p.empty());
-    }
+    TEST_ASSERT_EQUAL(10, p.front());
 }
 
-TEST(test_multiple_elements) {
+void test_one_element_pop() {
+    supp::PriorityQueue<int, 1, Comp> p;
+
+    p.push(10);
+    TEST_ASSERT_EQUAL(1, p.size());
+    TEST_ASSERT_FALSE(p.empty());
+
+    TEST_ASSERT_EQUAL(10, p.pop());
+    TEST_ASSERT_TRUE(p.empty());
+}
+
+void test_multiple_elements_front() {
     supp::PriorityQueue<int, 3, Comp> p;
 
     p.push(30);
@@ -39,24 +42,38 @@ TEST(test_multiple_elements) {
     TEST_ASSERT_EQUAL(3, p.size());
     TEST_ASSERT_FALSE(p.empty());
 
-    SECTION("front") {
-        TEST_ASSERT_EQUAL(10, p.front());
-    }
-
-    SECTION("pop") {
-        TEST_ASSERT_EQUAL(10, p.pop());
-        TEST_ASSERT_EQUAL(20, p.pop());
-        TEST_ASSERT_EQUAL(30, p.pop());
-        TEST_ASSERT_TRUE(p.empty());
-    }
-
-    SECTION("clear") {
-        p.clear();
-        TEST_ASSERT_TRUE(p.empty());
-    }
+    TEST_ASSERT_EQUAL(10, p.front());
 }
 
-TEST(test_more_operations) {
+void test_multiple_elements_pop() {
+    supp::PriorityQueue<int, 3, Comp> p;
+
+    p.push(30);
+    p.push(10);
+    p.push(20);
+    TEST_ASSERT_EQUAL(3, p.size());
+    TEST_ASSERT_FALSE(p.empty());
+
+    TEST_ASSERT_EQUAL(10, p.pop());
+    TEST_ASSERT_EQUAL(20, p.pop());
+    TEST_ASSERT_EQUAL(30, p.pop());
+    TEST_ASSERT_TRUE(p.empty());
+}
+
+void test_multiple_elements_clear() {
+    supp::PriorityQueue<int, 3, Comp> p;
+
+    p.push(30);
+    p.push(10);
+    p.push(20);
+    TEST_ASSERT_EQUAL(3, p.size());
+    TEST_ASSERT_FALSE(p.empty());
+
+    p.clear();
+    TEST_ASSERT_TRUE(p.empty());
+}
+
+void test_more_operations() {
     supp::PriorityQueue<int, 3, Comp> p;
 
     p.push(30);
@@ -77,4 +94,35 @@ TEST(test_more_operations) {
     TEST_ASSERT_EQUAL(100, p.pop());
 }
 
-TESTS_MAIN
+int runUnityTests(void) {
+    UNITY_BEGIN();
+    RUN_TEST(test_empty);
+    RUN_TEST(test_one_element_front);
+    RUN_TEST(test_one_element_pop);
+    RUN_TEST(test_multiple_elements_front);
+    RUN_TEST(test_multiple_elements_pop);
+    RUN_TEST(test_multiple_elements_clear);
+    RUN_TEST(test_more_operations);
+    return UNITY_END();
+}
+
+#if !defined(ARDUINO)
+
+int main(void) {
+    return runUnityTests();
+}
+
+#else
+
+#include <Arduino.h>
+
+void setup() {
+    // Wait ~2 seconds before the Unity test runner
+    // establishes connection with a board Serial interface
+    delay(2000);
+    runUnityTests();
+}
+
+void loop() {}
+
+#endif
