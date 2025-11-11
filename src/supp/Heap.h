@@ -12,16 +12,23 @@ class Heap {
     Heap() = default;
 
     template <typename T>
-    void push(T&& arg) {
-        self().pushBack(std::forward<T>(arg));
+    [[nodiscard]] bool push(T&& arg) {
+        if (!self().pushBack(std::forward<T>(arg))) {
+            return false;
+        }
+
+        DASSERT(!empty());
         siftUp(self().size() - 1);
+        return true;
     }
 
     auto pop() {
+        DASSERT(!empty());
         return remove(0);
     }
 
     auto erase(size_t idx) {
+        DASSERT(!empty());
         return remove(idx);
     }
 
@@ -32,22 +39,22 @@ class Heap {
     }
 
     decltype(auto) front() {
+        DASSERT(!empty());
         return self().at(0);
     }
 
     decltype(auto) front() const {
+        DASSERT(!empty());
         return self().at(0);
     }
 
     void clear() {
-        while (!self().empty()) {
+        while (!empty()) {
             pop();
         }
     }
 
-    bool empty() const {
-        return self().size() == 0;
-    }
+    bool empty() const { return self().size() == 0; }
 
  private:
     auto remove(size_t idx) {
@@ -104,13 +111,9 @@ class Heap {
         return false;
     }
 
-    Self& self() {
-        return *static_cast<Self*>(this);
-    }
+    Self& self() { return *static_cast<Self*>(this); }
 
-    const Self& self() const {
-        return *static_cast<const Self*>(this);
-    }
+    const Self& self() const { return *static_cast<const Self*>(this); }
 };
 
 }  // namespace supp

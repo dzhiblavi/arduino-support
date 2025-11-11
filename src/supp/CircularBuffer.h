@@ -28,6 +28,10 @@ class CircularBuffer {
         return buf_[head_];
     }
 
+    const T& operator[](size_t index) const {
+        return buf_[(head_ + index) % Cap];
+    }
+
     size_t size() const {
         return size_;
     }
@@ -42,6 +46,10 @@ class CircularBuffer {
 
     void clear() {
         head_ = size_ = 0;
+    }
+
+    constexpr size_t capacity() const {
+        return Cap;
     }
 
  private:

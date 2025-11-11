@@ -12,9 +12,7 @@ struct IntrusiveListNode {
     IntrusiveListNode* next_ = nullptr;
     IntrusiveListNode* prev_ = nullptr;
 
-    bool isLinked() {
-        return prev_ != nullptr;
-    }
+    bool isLinked() { return prev_ != nullptr; }
 
     void unlink() {
         DASSERT(isLinked());
@@ -34,24 +32,17 @@ class IntrusiveList {
     IntrusiveList& operator=(const IntrusiveList&) = delete;
 
     IntrusiveList(IntrusiveList&& rhs) noexcept {
-        s_.next_ = std::exchange(rhs.s_.next_, &rhs.s_);
-        s_.prev_ = std::exchange(rhs.s_.prev_, &rhs.s_);
-        DASSERT(rhs.empty());
-    }
-
-    IntrusiveList& operator=(IntrusiveList&& rhs) noexcept {
-        if (this == &rhs) {
-            return *this;
+        if (rhs.empty()) {
+            return;
         }
 
-        std::swap(s_.next_, rhs.s_.next_);
-        std::swap(s_.prev_, rhs.s_.prev_);
-        return *this;
+        s_.next_ = std::exchange(rhs.s_.next_, &rhs.s_);
+        s_.prev_ = std::exchange(rhs.s_.prev_, &rhs.s_);
+        s_.next_->prev_ = &s_;
+        s_.prev_->next_ = &s_;
     }
 
-    bool empty() const {
-        return s_.next_ == &s_;
-    }
+    bool empty() const { return s_.next_ == &s_; }
 
     T* front() {
         DASSERT(!empty());
@@ -70,17 +61,11 @@ class IntrusiveList {
         return static_cast<T*>(front);
     }
 
-    void insertAfter(T* after, T* node) {
-        linkAfter(after, node);
-    }
+    void insertAfter(T* after, T* node) { linkAfter(after, node); }
 
-    void pushFront(T* val) {
-        linkAfter(s_.next_, val);
-    }
+    void pushFront(T* val) { linkAfter(s_.next_, val); }
 
-    void pushBack(T* val) {
-        linkAfter(s_.prev_, val);
-    }
+    void pushBack(T* val) { linkAfter(s_.prev_, val); }
 
     // O(N)
     void clear() {
@@ -99,6 +84,18 @@ class IntrusiveList {
             cur = cur->next_;
         }
         return res;
+    }
+
+    // func is allowed to remove current element only
+    template <typename F>
+    void iterate(F func) {
+        auto* curr = s_.next_;
+
+        while (curr != &s_) {
+            auto* next = curr->next_;
+            func(static_cast<T&>(*curr));
+            curr = next;
+        }
     }
 
  private:

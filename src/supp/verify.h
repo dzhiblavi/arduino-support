@@ -7,24 +7,23 @@
 
 #include <cstdlib>  // abort
 
-#define _VERIFY(expr, ...)                                             \
-    [&] {                                                              \
-        auto&& retval__ = (expr);                                      \
-        if (!static_cast<bool>(retval__)) [[unlikely]] {               \
-            LFATAL("Verify failed expr='" #expr "': ", ##__VA_ARGS__); \
-            abort();                                                   \
-        }                                                              \
-        return retval__;                                               \
-    }()
-
-#define VERIFY(...) _VERIFY(__VA_ARGS__)
-
 #if defined(DEBUG) || defined(SUPP_FORCE_DASSERT)
 
-#define DASSERT(expr, ...) (void)_VERIFY(expr, ##__VA_ARGS__)
+#define VERIFY(expr, ...)                                                         \
+    [&] {                                                                         \
+        auto&& retval__ = (expr);                                                 \
+        if (!static_cast<bool>(retval__)) [[unlikely]] {                          \
+            LFATAL(F("Verify failed expr='"), F(#expr), F("': "), ##__VA_ARGS__); \
+            abort();                                                              \
+        }                                                                         \
+        return retval__;                                                          \
+    }()
+
+#define DASSERT(expr, ...) (void)VERIFY(expr, ##__VA_ARGS__)
 
 #else
 
+#define VERIFY(expr, ...) expr
 #define DASSERT(...)
 
 #endif

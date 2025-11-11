@@ -4,7 +4,8 @@
 
 #include <utility>
 
-#include <stdint.h>
+#include <cstdint>
+#include <new>
 
 namespace supp {
 
@@ -29,9 +30,7 @@ struct ManualLifetime {  // NOLINT
         }
     }
 
-    [[nodiscard]] bool initialized() const noexcept {
-        return initialized_;
-    }
+    [[nodiscard]] bool initialized() const noexcept { return initialized_; }
 
     void emplace(T value) {
         DASSERT(!initialized_);
@@ -48,7 +47,9 @@ struct ManualLifetime {  // NOLINT
 
     T get() && noexcept {
         DASSERT(initialized_);
-        return std::move(*getPtr());
+        auto result = std::move(*getPtr());
+        release();
+        return result;
     }
 
     T& get() & noexcept {
@@ -57,9 +58,7 @@ struct ManualLifetime {  // NOLINT
     }
 
  private:
-    T* getPtr() {
-        return reinterpret_cast<T*>(&storage_);
-    }
+    T* getPtr() { return reinterpret_cast<T*>(&storage_); }
 
     void release() {
         DASSERT(initialized_);

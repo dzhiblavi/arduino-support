@@ -15,9 +15,7 @@ class RandomAccessPriorityQueueNode {
  public:
     RandomAccessPriorityQueueNode() = default;
 
-    bool connected() const {
-        return heap_index_ != UINT_MAX;
-    }
+    bool connected() const { return heap_index_ != UINT_MAX; }
 
  private:
     size_t heap_index_{UINT_MAX};
@@ -47,43 +45,53 @@ class RandomAccessPriorityQueue : public Heap<RandomAccessPriorityQueue<T, Cap, 
         Base::fix(val->heap_index_);
     }
 
-    size_t size() const {
-        return size_;
-    }
+    size_t size() const { return size_; }
 
-    constexpr size_t capacity() const {
-        return Cap;
-    }
+    constexpr size_t capacity() const { return Cap; }
 
  private:
     T* at(size_t i) {
+        DASSERT(i < size_);
         return buf_[i];
     }
 
     const T* at(size_t i) const {
+        DASSERT(i < size_);
         return buf_[i];
     }
 
-    void pushBack(T* val) {
+    bool pushBack(T* val) {
+        if (size_ == capacity()) {
+            return false;
+        }
+
         val->heap_index_ = size_;
         buf_[size_++] = val;
+        return true;
     }
 
     void popBack() {
+        DASSERT(size_ > 0);
         buf_[--size_]->heap_index_ = UINT_MAX;
     }
 
     bool compare(size_t i, size_t j) {
+        DASSERT(i < size_);
+        DASSERT(j < size_);
         return compare_(*buf_[i], *buf_[j]);
     }
 
     void swap(size_t i, size_t j) {
+        DASSERT(i < size_);
+        DASSERT(j < size_);
         std::swap(buf_[i], buf_[j]);
         buf_[i]->heap_index_ = i;
         buf_[j]->heap_index_ = j;
     }
 
     void replaceWithBack(size_t to) {
+        DASSERT(to < size_);
+
         --size_;
         DASSERT(to != size_);
 
